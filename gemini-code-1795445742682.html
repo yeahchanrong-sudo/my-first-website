@@ -1,0 +1,1741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Face Scan & 10-Style Glasses Recommender | EN / ខ្មែរ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Kantumruy Pro', 'Segoe UI', Tahoma, sans-serif;
+    }
+
+    body {
+      background: #070b19;
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 22px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Ambient Floating Background Orbs */
+    .bg-orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(95px);
+      z-index: -1;
+      opacity: 0.42;
+      pointer-events: none;
+      animation: floatOrb 12s infinite alternate ease-in-out;
+    }
+
+    .orb-1 { width: 380px; height: 380px; background: #0284c7; top: -80px; left: -80px; }
+    .orb-2 { width: 340px; height: 340px; background: #f59e0b; bottom: -60px; right: -60px; animation-delay: -5s; }
+
+    @keyframes floatOrb {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(45px, 35px) scale(1.15); }
+    }
+
+    .top-bar {
+      width: 100%;
+      max-width: 1220px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 14px;
+      animation: fadeDown 0.6s ease-out;
+    }
+
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    header h1 {
+      font-size: 1.75rem;
+      background: linear-gradient(90deg, #38bdf8, #f59e0b, #34d399);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: gradientFlow 5s linear infinite;
+      margin-bottom: 4px;
+    }
+
+    @keyframes gradientFlow {
+      0% { background-position: 0% center; }
+      100% { background-position: 200% center; }
+    }
+
+    header p {
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* Frame Color Picker for Virtual Try-On */
+    .color-picker-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(30, 41, 59, 0.85);
+      border: 1px solid #334155;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      color: #cbd5e1;
+    }
+
+    .color-dot {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .color-dot.active {
+      transform: scale(1.18);
+      border-color: #ffffff;
+    }
+
+    .lang-switcher {
+      display: flex;
+      background: rgba(30, 41, 59, 0.85);
+      border: 1px solid #334155;
+      border-radius: 999px;
+      padding: 4px;
+      gap: 4px;
+    }
+
+    .lang-btn {
+      background: transparent;
+      color: #94a3b8;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .lang-btn.active {
+      background: #38bdf8;
+      color: #0f172a;
+    }
+
+    .app-container {
+      display: grid;
+      grid-template-columns: 1fr 1.18fr;
+      gap: 24px;
+      max-width: 1220px;
+      width: 100%;
+    }
+
+    @media (max-width: 940px) {
+      .app-container { grid-template-columns: 1fr; }
+    }
+
+    .camera-card, .result-card {
+      background: rgba(30, 41, 59, 0.82);
+      backdrop-filter: blur(14px);
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    .video-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      background: #020617;
+      border-radius: 14px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hud-corner {
+      position: absolute;
+      width: 26px;
+      height: 26px;
+      border-color: #38bdf8;
+      border-style: solid;
+      z-index: 4;
+      opacity: 0.75;
+      pointer-events: none;
+      animation: cornerPulse 2.2s infinite ease-in-out;
+    }
+
+    .hud-tl { top: 12px; left: 12px; border-width: 3px 0 0 3px; border-top-left-radius: 6px; }
+    .hud-tr { top: 12px; right: 12px; border-width: 3px 3px 0 0; border-top-right-radius: 6px; }
+    .hud-bl { bottom: 12px; left: 12px; border-width: 0 0 3px 3px; border-bottom-left-radius: 6px; }
+    .hud-br { bottom: 12px; right: 12px; border-width: 0 3px 3px 0; border-bottom-right-radius: 6px; }
+
+    @keyframes cornerPulse {
+      0%, 100% { transform: scale(1); opacity: 0.65; }
+      50% { transform: scale(1.08); opacity: 1; }
+    }
+
+    .radar-ring {
+      position: absolute;
+      width: 130px;
+      height: 130px;
+      border: 2px solid #f59e0b;
+      border-radius: 50%;
+      z-index: 4;
+      display: none;
+      pointer-events: none;
+      animation: radarExpand 1.2s infinite ease-out;
+    }
+
+    @keyframes radarExpand {
+      0% { transform: scale(0.5); opacity: 0.95; }
+      100% { transform: scale(2.4); opacity: 0; }
+    }
+
+    video, canvas, #uploadedPhoto {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+    }
+
+    video { object-fit: cover; }
+    #uploadedPhoto { object-fit: contain; display: none; }
+    .mirrored { transform: scaleX(-1); }
+
+    .scan-line {
+      position: absolute;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, transparent, #f59e0b, #38bdf8, #f59e0b, transparent);
+      box-shadow: 0 0 18px #f59e0b;
+      top: 0;
+      display: none;
+      animation: scanAnim 1.6s infinite ease-in-out;
+      z-index: 5;
+    }
+
+    @keyframes scanAnim {
+      0% { top: 5%; }
+      50% { top: 94%; }
+      100% { top: 5%; }
+    }
+
+    /* White Silhouette Card Preview During Active Scan */
+    .scan-preview-box {
+      position: absolute;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #ffffff;
+      border: 2px solid #f59e0b;
+      border-radius: 12px;
+      padding: 6px 16px;
+      display: none;
+      align-items: center;
+      gap: 12px;
+      z-index: 6;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    }
+
+    .scan-preview-box svg {
+      width: 86px;
+      height: 36px;
+    }
+
+    .scan-preview-text {
+      font-size: 0.84rem;
+      color: #ea580c;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    button {
+      padding: 11px 14px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+    }
+
+    #startBtn { background: #38bdf8; color: #0f172a; }
+    #uploadBtn { background: #8b5cf6; color: #ffffff; }
+    #scanBtn {
+      grid-column: span 2;
+      background: linear-gradient(90deg, #f59e0b, #10b981);
+      color: #0f172a;
+    }
+
+    button:disabled {
+      background: #334155 !important;
+      color: #64748b !important;
+      cursor: not-allowed;
+    }
+
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+      padding: 9px 12px;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid #334155;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      color: #cbd5e1;
+      cursor: pointer;
+    }
+
+    .toggle-row input {
+      accent-color: #38bdf8;
+      width: 16px;
+      height: 16px;
+    }
+
+    .status-text {
+      margin-top: 10px;
+      font-size: 0.85rem;
+      color: #cbd5e1;
+      text-align: center;
+    }
+
+    .result-card h2 {
+      font-size: 1.3rem;
+      margin-bottom: 10px;
+      color: #f8fafc;
+    }
+
+    .shape-badge {
+      display: inline-block;
+      background: rgba(245, 158, 11, 0.16);
+      color: #fbbf24;
+      border: 1px solid #f59e0b;
+      padding: 6px 16px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 1rem;
+      margin-bottom: 12px;
+    }
+
+    .reveal-anim {
+      animation: slideUpFade 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes slideUpFade {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .info-block {
+      margin-bottom: 12px;
+      line-height: 1.55;
+      color: #cbd5e1;
+      font-size: 0.89rem;
+    }
+
+    /* Reference-Style White Cards with Crisp Black Silhouettes & Orange Titles */
+    .glasses-photo-showcase {
+      display: none;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .showcase-title {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #fbbf24;
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    .glasses-photo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .glasses-photo-card {
+      background: #ffffff;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 10px 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.22s ease;
+    }
+
+    .glasses-photo-card:hover {
+      border-color: #f59e0b;
+      transform: translateY(-3px);
+      box-shadow: 0 8px 18px rgba(245, 158, 11, 0.28);
+    }
+
+    .glasses-photo-card svg {
+      width: 100%;
+      height: 40px;
+      margin-bottom: 4px;
+    }
+
+    .glasses-photo-card span {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #f59e0b;
+    }
+
+    .why-box {
+      background: rgba(15, 23, 42, 0.75);
+      border-left: 3px solid #10b981;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 0.87rem;
+      line-height: 1.55;
+      color: #e2e8f0;
+      display: none;
+    }
+
+    .why-box strong { color: #34d399; }
+
+    .location-box {
+      background: rgba(15, 23, 42, 0.78);
+      border-left: 3px solid #38bdf8;
+      padding: 11px 14px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 0.85rem;
+      line-height: 1.55;
+      color: #cbd5e1;
+      display: none;
+    }
+
+    .location-box strong { color: #38bdf8; }
+    .location-box ul { margin-left: 18px; margin-top: 4px; }
+
+    .ratio-bars {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 14px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(51, 65, 85, 0.7);
+    }
+
+    .ratio-item { font-size: 0.76rem; }
+    .ratio-header { display: flex; justify-content: space-between; margin-bottom: 3px; color: #e2e8f0; }
+    .ratio-track { width: 100%; height: 6px; background: #1e293b; border-radius: 999px; overflow: hidden; }
+    .ratio-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #38bdf8, #f59e0b);
+      border-radius: 999px;
+      transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .store-locator-bar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: rgba(139, 92, 246, 0.16);
+      border: 1px solid #8b5cf6;
+      padding: 9px 12px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      font-size: 0.82rem;
+    }
+
+    .store-locator-bar a {
+      background: #8b5cf6;
+      color: #fff;
+      text-decoration: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.78rem;
+      white-space: nowrap;
+    }
+
+    /* 2-Column Reference Chart Grid for the 10 Glasses Models */
+    .frame-selector {
+      margin-top: 10px;
+      padding-top: 12px;
+      border-top: 1px solid #334155;
+    }
+
+    .frame-selector-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .frame-selector-header p {
+      font-size: 0.85rem;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    .landmarks-only-btn {
+      background: #0f172a;
+      color: #cbd5e1;
+      border: 1px solid #475569;
+      padding: 5px 12px;
+      border-radius: 8px;
+      font-size: 0.76rem;
+    }
+
+    .landmarks-only-btn.active {
+      border-color: #38bdf8;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.15);
+    }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    @media (max-width: 520px) {
+      .chart-grid { grid-template-columns: 1fr; }
+    }
+
+    .chart-btn {
+      background: #ffffff;
+      border: 2px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .chart-btn:hover {
+      border-color: #f59e0b;
+      transform: translateY(-2px);
+    }
+
+    .chart-btn.active {
+      border-color: #f59e0b;
+      background: #fffbeb;
+      box-shadow: 0 0 14px rgba(245, 158, 11, 0.45);
+    }
+
+    .chart-btn .btn-label {
+      color: #f59e0b;
+      font-weight: 700;
+      font-size: 0.84rem;
+      white-space: nowrap;
+    }
+
+    .chart-btn svg {
+      width: 112px;
+      height: 36px;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+
+  <div class="top-bar">
+    <header>
+      <h1 id="appTitle">AI Glasses Fit & 10-Frame Style Scanner</h1>
+      <p id="appSubtitle">Scan your facial zones to try on all 10 classic eyewear silhouettes in real time</p>
+    </header>
+
+    <div class="top-actions">
+      <div class="color-picker-bar">
+        <span id="colorLabel">Frame Color:</span>
+        <div class="color-dot active" data-color="#111827" data-fill="rgba(17,24,39,0.14)" style="background:#111827;" title="Classic Black"></div>
+        <div class="color-dot" data-color="#38bdf8" data-fill="rgba(56,189,248,0.18)" style="background:#38bdf8;" title="Cyber Blue"></div>
+        <div class="color-dot" data-color="#d97706" data-fill="rgba(217,119,6,0.16)" style="background:#d97706;" title="Amber Gold"></div>
+        <div class="color-dot" data-color="#7c2d12" data-fill="rgba(124,45,18,0.18)" style="background:#7c2d12;" title="Tortoise Brown"></div>
+      </div>
+
+      <div class="lang-switcher">
+        <button class="lang-btn active" data-lang="en">English</button>
+        <button class="lang-btn" data-lang="km">ភាសាខ្មែរ</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-container">
+    <!-- Left Column: Camera / Photo & Overlay -->
+    <div class="camera-card">
+      <div class="video-wrapper">
+        <div class="hud-corner hud-tl"></div>
+        <div class="hud-corner hud-tr"></div>
+        <div class="hud-corner hud-bl"></div>
+        <div class="hud-corner hud-br"></div>
+        <div class="radar-ring" id="radarRing"></div>
+
+        <video id="webcam" class="mirrored" autoplay playsinline></video>
+        <img id="uploadedPhoto" alt="Uploaded selfie" />
+        <canvas id="overlay" class="mirrored"></canvas>
+        <div class="scan-line" id="scanLine"></div>
+
+        <div class="scan-preview-box" id="scanPreviewBox">
+          <div id="scanPreviewSvg"></div>
+          <div class="scan-preview-text" id="scanPreviewText">Testing...</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="startBtn" disabled>Use Webcam</button>
+        <button id="uploadBtn" disabled>Upload Selfie</button>
+        <input type="file" id="photoInput" accept="image/*" hidden />
+        <button id="scanBtn" disabled>Scan Webcam Face</button>
+      </div>
+
+      <label class="toggle-row">
+        <span id="toggleZonesLabel">Show Facial Measurement Locations (Forehead, Cheek, Jaw, Bridge)</span>
+        <input type="checkbox" id="showZonesToggle" checked />
+      </label>
+
+      <p class="status-text" id="statusText">Loading AI face model...</p>
+    </div>
+
+    <!-- Right Column: Analysis & 10-Style Glasses Chart -->
+    <div class="result-card">
+      <h2 id="analysisHeader">Your Face & Eyewear Analysis</h2>
+      <div class="shape-badge" id="faceShapeLabel">Waiting for scan...</div>
+
+      <div class="info-block" id="shapeDescription">
+        Choose <strong>Use Webcam</strong> or <strong>Upload Selfie</strong> to map your facial zones and test the 10 glasses styles below.
+      </div>
+
+      <!-- Top 3 Recommended Silhouettes Showcase -->
+      <div class="glasses-photo-showcase" id="glassesShowcase">
+        <div class="showcase-title" id="showcaseTitle">Top Recommended Glasses Silhouettes (Click to Try On)</div>
+        <div class="glasses-photo-grid" id="glassesPhotoGrid"></div>
+      </div>
+
+      <div class="why-box" id="whyItWorks"></div>
+      <div class="location-box" id="locationExplanation"></div>
+
+      <div class="store-locator-bar" id="storeLocatorBar">
+        <span id="storePromptText">Want to try these frames in person near your location?</span>
+        <a id="storeLinkText" href="https://www.google.com/maps/search/optical+glasses+shop+near+me" target="_blank" rel="noopener">Find Nearby Optical Shops</a>
+      </div>
+
+      <div class="info-block" id="avoidFrames"></div>
+
+      <!-- 10-Glasses Chart Matching the Uploaded Reference Image -->
+      <div class="frame-selector">
+        <div class="frame-selector-header">
+          <p id="allModelsLabel">10 Eyewear Styles Chart (Click Any Frame to Try On):</p>
+          <button class="landmarks-only-btn frame-btn active" data-style="none">
+            <span class="btn-label" data-key="none">Landmarks Only</span>
+          </button>
+        </div>
+
+        <div class="chart-grid" id="frameButtonsContainer">
+          <button class="chart-btn frame-btn" data-style="browline"><span class="btn-label" data-key="browline">Browline</span></button>
+          <button class="chart-btn frame-btn" data-style="butterfly"><span class="btn-label" data-key="butterfly">Butterfly</span></button>
+          <button class="chart-btn frame-btn" data-style="cateye"><span class="btn-label" data-key="cateye">Cat Eye</span></button>
+          <button class="chart-btn frame-btn" data-style="geometric"><span class="btn-label" data-key="geometric">Geometric</span></button>
+          <button class="chart-btn frame-btn" data-style="rectangle"><span class="btn-label" data-key="rectangle">Rectangle</span></button>
+          <button class="chart-btn frame-btn" data-style="goggle"><span class="btn-label" data-key="goggle">Goggle</span></button>
+          <button class="chart-btn frame-btn" data-style="oval"><span class="btn-label" data-key="oval">Oval</span></button>
+          <button class="chart-btn frame-btn" data-style="oversized"><span class="btn-label" data-key="oversized">Oversized</span></button>
+          <button class="chart-btn frame-btn" data-style="pilot"><span class="btn-label" data-key="pilot">Pilot</span></button>
+          <button class="chart-btn frame-btn" data-style="round"><span class="btn-label" data-key="round">Round</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/+esm";
+
+    const video = document.getElementById("webcam");
+    const uploadedPhoto = document.getElementById("uploadedPhoto");
+    const canvas = document.getElementById("overlay");
+    const ctx = canvas.getContext("2d");
+
+    const startBtn = document.getElementById("startBtn");
+    const uploadBtn = document.getElementById("uploadBtn");
+    const photoInput = document.getElementById("photoInput");
+    const scanBtn = document.getElementById("scanBtn");
+    const showZonesToggle = document.getElementById("showZonesToggle");
+    const statusText = document.getElementById("statusText");
+    const scanLine = document.getElementById("scanLine");
+    const radarRing = document.getElementById("radarRing");
+    const scanPreviewBox = document.getElementById("scanPreviewBox");
+    const scanPreviewSvg = document.getElementById("scanPreviewSvg");
+    const scanPreviewText = document.getElementById("scanPreviewText");
+
+    const faceShapeLabel = document.getElementById("faceShapeLabel");
+    const shapeDescription = document.getElementById("shapeDescription");
+    const glassesShowcase = document.getElementById("glassesShowcase");
+    const glassesPhotoGrid = document.getElementById("glassesPhotoGrid");
+    const whyItWorks = document.getElementById("whyItWorks");
+    const locationExplanation = document.getElementById("locationExplanation");
+    const storeLocatorBar = document.getElementById("storeLocatorBar");
+    const avoidFrames = document.getElementById("avoidFrames");
+    const frameButtons = document.querySelectorAll(".frame-btn");
+    const langButtons = document.querySelectorAll(".lang-btn");
+    const colorDots = document.querySelectorAll(".color-dot");
+
+    let currentLang = "en";
+    let frameStrokeColor = "#111827";
+    let frameFillColor = "rgba(17,24,39,0.14)";
+    let faceLandmarker;
+    let currentRunningMode = "VIDEO";
+    let activeSource = null;
+    let webcamStream = null;
+    let isScanning = false;
+    let scanSamples = [];
+    let selectedStyle = "none";
+    let photoLandmarks = null;
+    let scanCycleInterval = null;
+    let lastDetectedShape = null;
+    let lastDetectedRatios = null;
+
+    // 10 Crisp Black Vector Silhouettes Matching the Reference Image
+    const glassesPhotosSVG = {
+      browline: `<svg viewBox="0 0 240 85" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M24 27 C24 68, 96 68, 96 27" stroke="#111" stroke-width="2.2" fill="none"/>
+        <path d="M144 27 C144 68, 216 68, 216 27" stroke="#111" stroke-width="2.2" fill="none"/>
+        <path d="M12 22 Q55 14 100 24 L100 31 Q55 21 22 31 L14 31 Z" fill="#111"/>
+        <path d="M228 22 Q185 14 140 24 L140 31 Q185 21 218 31 L226 31 Z" fill="#111"/>
+        <path d="M98 25 Q120 20 142 25" stroke="#111" stroke-width="4" fill="none"/>
+      </svg>`,
+      butterfly: `<svg viewBox="0 0 240 85" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22 25 C18 68, 92 72, 102 36 C100 18, 45 14, 22 25 Z" stroke="#111" stroke-width="6.5" fill="none"/>
+        <path d="M218 25 C222 68, 148 72, 138 36 C140 18, 195 14, 218 25 Z" stroke="#111" stroke-width="6.5" fill="none"/>
+        <path d="M12 13 Q52 14 96 27" stroke="#111" stroke-width="5" stroke-linecap="round" fill="none"/>
+        <path d="M228 13 Q188 14 144 27" stroke="#111" stroke-width="5" stroke-linecap="round" fill="none"/>
+        <path d="M14 14 L23 28 M226 14 L217 28" stroke="#111" stroke-width="4"/>
+        <path d="M102 36 Q120 31 138 36" stroke="#111" stroke-width="3.5" fill="none"/>
+      </svg>`,
+      cateye: `<svg viewBox="0 0 240 85" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M16 26 Q55 18 104 34 C98 66, 30 68, 16 26 Z" stroke="#111" stroke-width="8" stroke-linejoin="round" fill="none"/>
+        <path d="M224 26 Q185 18 136 34 C142 66, 210 68, 224 26 Z" stroke="#111" stroke-width="8" stroke-linejoin="round" fill="none"/>
+        <path d="M102 34 Q120 29 138 34" stroke="#111" stroke-width="8" fill="none"/>
+      </svg>`,
+      geometric: `<svg viewBox="0 0 240 85" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M16 26 L42 15 L98 25 L102 38 C96 72, 24 72, 16 26 Z" stroke="#111" stroke-width="8.5" stroke-linejoin="round" fill="none"/>
+        <path d="M224 26 L198 15 L142 25 L138 38 C144 72, 216 72, 224 26 Z" stroke="#111" stroke-width="8.5" stroke-linejoin="round" fill="none"/>
+        <path d="M100 28 Q120 24 140 28" stroke="#111" stroke-width="8" fill="none"/>
+      </svg>`,
+      rectangle: `<svg viewBox="0 0 240 85" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M18 24 Q60 21 102 26 L94 58 Q56 62 24 56 Z" stroke="#111" stroke-width="2.5" fill="none"/>
+        <path d="M222 24 Q180 21 138 26 L146 58 Q184 62 216 56 Z" stroke="#111" stroke-width="2.5" fill="none"/>
+        <line x1="101" y1="26" x2="139" y2="26" stroke="#111" stroke-width="2.5"/>
+        <line x1="100" y1="32" x2="140" y2="32" stroke="#111" stroke-width="2.2"/>
+        <rect x="11" y="28" width="7" height="10" fill="#111"/>
+        <rect x="222" y="28" width="7" height="10" fill="#111"/>
+      </svg>`,
+      goggle: `<svg viewBox="0 0 240 85" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="18" y="18" width="84" height="50" rx="18" stroke="#111" stroke-width="11" fill="none"/>
+        <rect x="138" y="18" width="84" height="50" rx="18" stroke="#111" stroke-width="11" fill="none"/>
+        <path d="M102 32 Q120 26 138 32" stroke="#111" stroke-width="11" fill="none"/>
+      </svg>`,
+      oval: `<svg viewBox="0 0 240 85" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="62" cy="44" rx="37" ry="26" stroke="#111" stroke-width="6.5" fill="none"/>
+        <ellipse cx="178" cy="44" rx="37" ry="26" stroke="#111" stroke-width="6.5" fill="none"/>
+        <path d="M97 30 Q120 18 143 30" stroke="#111" stroke-width="7.5" fill="none"/>
+        <rect x="15" y="29" width="11" height="7" rx="2" fill="#111"/>
+        <rect x="214" y="29" width="11" height="7" rx="2" fill="#111"/>
+      </svg>`,
+      oversized: `<svg viewBox="0 0 240 85" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M18 17 L104 20 L98 62 Q60 72 24 62 Z" stroke="#111" stroke-width="7.5" stroke-linejoin="round" fill="none"/>
+        <path d="M222 17 L136 20 L142 62 Q180 72 216 62 Z" stroke="#111" stroke-width="7.5" stroke-linejoin="round" fill="none"/>
+        <path d="M102 24 Q120 21 138 24" stroke="#111" stroke-width="9" fill="none"/>
+      </svg>`,
+      pilot: `<svg viewBox="0 0 240 85" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22 22 L100 22 C104 48, 86 72, 54 70 C22 68, 14 44, 22 22 Z" stroke="#111" stroke-width="5.5" fill="none"/>
+        <path d="M218 22 L140 22 C136 48, 154 72, 186 70 C218 68, 226 44, 218 22 Z" stroke="#111" stroke-width="5.5" fill="none"/>
+        <line x1="78" y1="18" x2="162" y2="18" stroke="#111" stroke-width="4.5"/>
+        <path d="M100 30 Q120 23 140 30" stroke="#111" stroke-width="4.5" fill="none"/>
+      </svg>`,
+      round: `<svg viewBox="0 0 240 85" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="66" cy="44" r="27" stroke="#111" stroke-width="2.5" fill="none"/>
+        <circle cx="174" cy="44" r="27" stroke="#111" stroke-width="2.5" fill="none"/>
+        <path d="M93 42 Q120 33 147 42" stroke="#111" stroke-width="2.5" fill="none"/>
+        <line x1="24" y1="42" x2="39" y2="42" stroke="#111" stroke-width="3.5"/>
+        <line x1="201" y1="42" x2="216" y2="42" stroke="#111" stroke-width="3.5"/>
+      </svg>`
+    };
+
+    // Inject SVG silhouettes into the 10-style chart buttons
+    frameButtons.forEach(btn => {
+      const st = btn.dataset.style;
+      if (glassesPhotosSVG[st]) {
+        btn.insertAdjacentHTML("beforeend", glassesPhotosSVG[st]);
+      }
+    });
+
+    // Bilingual Dictionary (English & Khmer) covering all 10 styles
+    const i18n = {
+      en: {
+        appTitle: "AI Glasses Fit & 10-Frame Style Scanner",
+        appSubtitle: "Scan your facial zones to try on all 10 classic eyewear silhouettes in real time",
+        colorLabel: "Frame Color:",
+        useWebcam: "Use Webcam",
+        webcamActive: "Webcam Active",
+        uploadSelfie: "Upload Selfie",
+        scanWebcam: "Scan Webcam Face",
+        toggleZones: "Show Facial Measurement Locations (Forehead, Cheek, Jaw, Bridge)",
+        statusLoading: "Loading AI face model...",
+        statusReady: "AI Model ready! Use your webcam or upload a selfie.",
+        statusError: "Error loading AI model. Check your internet connection.",
+        statusCenter: "Center your face and click 'Scan Webcam Face'.",
+        statusCamDenied: "Camera access denied. Try uploading a selfie instead!",
+        statusScanning: "Mapping facial locations & testing all 10 glasses models...",
+        statusComplete: "Scan complete! Click any of the 10 glasses silhouettes to preview.",
+        statusNoFace: "No face detected. Ensure good lighting and try again.",
+        analysisHeader: "Your Face & Eyewear Analysis",
+        waitingScan: "Waiting for scan...",
+        noFaceBadge: "No Face Detected",
+        initialDesc: "Choose <strong>Use Webcam</strong> or <strong>Upload Selfie</strong> to map your facial zones and test the 10 glasses styles below.",
+        showcaseTitle: "Top Recommended Glasses Silhouettes (Click to Try On)",
+        storePrompt: "Want to try these frames in person near your location?",
+        storeLink: "Find Nearby Optical Shops",
+        allModelsLabel: "10 Eyewear Styles Chart (Click Any Frame to Try On):",
+        scanningFitPrefix: "Testing:",
+        ratios: {
+          r1: "Length / Cheek Ratio",
+          r2: "Forehead / Jaw Ratio",
+          r3: "Cheek / Jaw Ratio",
+          r4: "Cheek / Forehead"
+        },
+        styles: {
+          none: "Landmarks Only",
+          browline: "Browline",
+          butterfly: "Butterfly",
+          cateye: "Cat Eye",
+          geometric: "Geometric",
+          rectangle: "Rectangle",
+          goggle: "Goggle",
+          oval: "Oval",
+          oversized: "Oversized",
+          pilot: "Pilot",
+          round: "Round"
+        },
+        shapes: {
+          Oval: {
+            badge: "Oval Face Shape",
+            preview: "geometric",
+            topStyles: ["geometric", "browline", "pilot"],
+            desc: "Your face has balanced proportions with gently rounded curves and slightly wider cheekbones.",
+            why: "<strong>Why These Work:</strong> Balanced facial proportions allow you to wear bold silhouettes like Geometric, Browline, Pilot, or Butterfly frames without disrupting your natural symmetry.",
+            fitLocation: "<strong>Frame Fit Locations on Your Face:</strong><ul><li><strong>Upper Rim Location:</strong> Align along the lower edge of your eyebrows (#103–#332).</li><li><strong>Side Temple Location:</strong> Match your cheekbone width (#234–#454).</li></ul>",
+            avoid: "<strong>Avoid:</strong> Frames that are far wider than your cheekbones."
+          },
+          Round: {
+            badge: "Round Face Shape",
+            preview: "rectangle",
+            topStyles: ["rectangle", "geometric", "browline"],
+            desc: "Your face has soft curves with nearly equal width and height across the cheekbones.",
+            why: "<strong>Why These Work:</strong> Sharp horizontal lines and angular corners in Rectangle, Geometric, Browline, and Cat Eye frames add definition and make your face appear longer.",
+            fitLocation: "<strong>Frame Fit Locations on Your Face:</strong><ul><li><strong>Bridge Location:</strong> A higher nose bridge fit (#168) visually lengthens the center of your face.</li><li><strong>Lower Lens Location:</strong> Keep the bottom rim above the mid-cheekbone line (#234–#454).</li></ul>",
+            avoid: "<strong>Avoid:</strong> Small Round or Oval frames that mirror circular contours."
+          },
+          Square: {
+            badge: "Square Face Shape",
+            preview: "round",
+            topStyles: ["round", "pilot", "oval"],
+            desc: "You have a strong, broad jawline and a similarly wide forehead with defined angles.",
+            why: "<strong>Why These Work:</strong> Curved silhouettes like Round, Oval, Pilot, and Butterfly frames soften a strong jawline (#172–#397) and create natural contrast.",
+            fitLocation: "<strong>Frame Fit Locations on Your Face:</strong><ul><li><strong>Bridge & Brow Location:</strong> Sit slightly higher on the nose bridge (#168) to draw focus upward.</li><li><strong>Outer Edge Location:</strong> Match your forehead width (#103–#332).</li></ul>",
+            avoid: "<strong>Avoid:</strong> Sharp Rectangle or thick Goggle frames that accentuate jaw angles."
+          },
+          Heart: {
+            badge: "Heart Face Shape",
+            preview: "pilot",
+            topStyles: ["pilot", "oval", "round"],
+            desc: "Your forehead and cheekbones are wider, tapering down to a narrower chin (#152).",
+            why: "<strong>Why These Work:</strong> Teardrop Pilot frames and light-rimmed Oval or Round silhouettes shift visual fullness downward, balancing a wider forehead (#103–#332) with a narrower chin.",
+            fitLocation: "<strong>Frame Fit Locations on Your Face:</strong><ul><li><strong>Temple Location:</strong> Keep upper corners aligned inside your temple width.</li><li><strong>Lower Rim Location:</strong> Let curved lower rims dip toward the mid-cheek zone.</li></ul>",
+            avoid: "<strong>Avoid:</strong> Heavy top-weighted Browline or Oversized frames."
+          },
+          Diamond: {
+            badge: "Diamond Face Shape",
+            preview: "butterfly",
+            topStyles: ["butterfly", "cateye", "browline"],
+            desc: "Your cheekbones (#234–#454) are the widest zone of your face, with a narrower forehead and jaw.",
+            why: "<strong>Why These Work:</strong> Winged Butterfly, upswept Cat Eye, and bold Browline tops add visual width above your cheekbones to balance narrow temples.",
+            fitLocation: "<strong>Frame Fit Locations on Your Face:</strong><ul><li><strong>Top Brow Location:</strong> Flared upper rims should sit just under the brow arch to widen the forehead zone (#103–#332).</li><li><strong>Cheekbone Location:</strong> Tapered lower rims prevent resting on high cheekbones.</li></ul>",
+            avoid: "<strong>Avoid:</strong> Narrow Rectangle frames that make cheekbones appear wider."
+          },
+          Oblong: {
+            badge: "Oblong Face Shape",
+            preview: "oversized",
+            topStyles: ["oversized", "goggle", "pilot"],
+            desc: "Your vertical face length (#10–#152) is noticeably greater than your cheekbone width.",
+            why: "<strong>Why These Work:</strong> Tall, deep silhouettes like Oversized, Goggle, and Pilot frames break up vertical face length and add balanced horizontal width.",
+            fitLocation: "<strong>Frame Fit Locations on Your Face:</strong><ul><li><strong>Nose Bridge Location:</strong> A lower or thick bridge (#168) shortens vertical nose appearance.</li><li><strong>Vertical Lens Depth:</strong> Deeper lenses cover more of the mid-cheek zone.</li></ul>",
+            avoid: "<strong>Avoid:</strong> Shallow Rectangle or small Oval lenses."
+          }
+        }
+      },
+      km: {
+        appTitle: "AI ស្កេនទម្រង់មុខ និងវ៉ែនតាទាំង 10 ម៉ូដ",
+        appSubtitle: "ស្កេនទីតាំងទម្រង់មុខរបស់អ្នក ដើម្បីសាកល្បងម៉ូដវ៉ែនតាទាំង 10 ដោយផ្ទាល់",
+        colorLabel: "ពណ៌វ៉ែនតា៖",
+        useWebcam: "បើកកាមេរ៉ា",
+        webcamActive: "កាមេរ៉ាកំពុងដំណើរការ",
+        uploadSelfie: "បង្ហោះរូបថត",
+        scanWebcam: "ស្កេនទម្រង់មុខ",
+        toggleZones: "បង្ហាញខ្សែវាស់ទីតាំងលើមុខ (ថ្ងាស ថ្ពាល់ ថ្គាម និងខ្ទង់ច្រមុះ)",
+        statusLoading: "កំពុងដំណើរការប្រព័ន្ធ AI...",
+        statusReady: "ប្រព័ន្ធ AI រួចរាល់! សូមបើកកាមេរ៉ា ឬបង្ហោះរូបថតរបស់អ្នក។",
+        statusError: "មានបញ្ហាក្នុងការភ្ជាប់ AI សូមពិនិត្យអ៊ីនធឺណិតរបស់អ្នក។",
+        statusCenter: "ដាក់មុខឱ្យចំកណ្តាល រួចចុច 'ស្កេនទម្រង់មុខ'។",
+        statusCamDenied: "មិនអាចបើកកាមេរ៉ាបានទេ សូមសាកល្បងបង្ហោះរូបថតជំនួសវិញ!",
+        statusScanning: "កំពុងវាស់ទីតាំងមុខ និងសាកល្បងវ៉ែនតាទាំង 10 ម៉ូដ...",
+        statusComplete: "ការស្កេនរួចរាល់! ចុចលើរូបវ៉ែនតាណាមួយក្នុងចំណោម 10 ម៉ូដដើម្បីសាកល្បង។",
+        statusNoFace: "រកមិនឃើញទម្រង់មុខទេ សូមថតនៅកន្លែងមានពន្លឺគ្រប់គ្រាន់។",
+        analysisHeader: "លទ្ធផលវិភាគទម្រង់មុខ និងវ៉ែនតា",
+        waitingScan: "កំពុងរង់ចាំការស្កេន...",
+        noFaceBadge: "រកមិនឃើញទម្រង់មុខ",
+        initialDesc: "សូមជ្រើសរើស <strong>បើកកាមេរ៉ា</strong> ឬ <strong>បង្ហោះរូបថត</strong> ដើម្បីវាស់ទីតាំងមុខ និងសាកល្បងវ៉ែនតាទាំង 10 ម៉ូដខាងក្រោម។",
+        showcaseTitle: "ម៉ូដវ៉ែនតាដែលស័ក្តិសមបំផុត (ចុចដើម្បីពាក់សាកល្បង)",
+        storePrompt: "ចង់ទៅសាកល្បងវ៉ែនតាផ្ទាល់នៅហាងក្បែរអ្នកមែនទេ?",
+        storeLink: "ស្វែងរកហាងវ៉ែនតាក្បែរខ្ញុំ",
+        allModelsLabel: "តារាងម៉ូដវ៉ែនតាទាំង 10 (ចុចលើម៉ូដណាមួយដើម្បីសាកល្បង)៖",
+        scanningFitPrefix: "កំពុងសាកល្បង៖",
+        ratios: {
+          r1: "សមាមាត្រ ប្រវែងមុខ / ថ្ពាល់",
+          r2: "សមាមាត្រ ថ្ងាស / ថ្គាម",
+          r3: "សមាមាត្រ ថ្ពាល់ / ថ្គាម",
+          r4: "សមាមាត្រ ថ្ពាល់ / ថ្ងាស"
+        },
+        styles: {
+          none: "បង្ហាញតែចំណុចមុខ",
+          browline: "Browline (ចិញ្ចើមក្រាស់)",
+          butterfly: "Butterfly (មេអំបៅ)",
+          cateye: "Cat Eye (ភ្នែកឆ្មា)",
+          geometric: "Geometric (ពហុកោណ)",
+          rectangle: "Rectangle (ចតុកោណ)",
+          goggle: "Goggle (ស៊ុមក្រាស់)",
+          oval: "Oval (ពងក្រពើ)",
+          oversized: "Oversized (កញ្ចក់ធំ)",
+          pilot: "Pilot (អាកាសយានិក)",
+          round: "Round (មូល)"
+        },
+        shapes: {
+          Oval: {
+            badge: "ទម្រង់មុខពងក្រពើ (Oval)",
+            preview: "geometric",
+            topStyles: ["geometric", "browline", "pilot"],
+            desc: "មុខរបស់អ្នកមានសមាមាត្រស្មើគ្នាល្អ មានខ្សែកោងស្រទន់ និងឆ្អឹងថ្ពាល់ទូលាយល្មម។",
+            why: "<strong>មូលហេតុដែលស័ក្តិសម៖</strong> ដោយសារទម្រង់មុខមានតុល្យភាពធម្មជាតិ អ្នកអាចពាក់ម៉ូដ Geometric, Browline, Pilot ឬ Butterfly បានយ៉ាងស្អាត។",
+            fitLocation: "<strong>ទីតាំងពាក់វ៉ែនតាលើមុខរបស់អ្នក៖</strong><ul><li><strong>ទីតាំងគែមខាងលើ៖</strong> ដាក់ឱ្យស្របតាមខ្សែចិញ្ចើមខាងក្រោម (#103–#332)។</li><li><strong>ទីតាំងគែមសងខាង៖</strong> ទទឹងវ៉ែនតាគួរស្មើនឹងទទឹងឆ្អឹងថ្ពាល់ (#234–#454)។</li></ul>",
+            avoid: "<strong>គួរជៀសវាង៖</strong> វ៉ែនតាដែលធំឬតូចហួសទទឹងឆ្អឹងថ្ពាល់ខ្លាំងពេក។"
+          },
+          Round: {
+            badge: "ទម្រង់មុខមូល (Round)",
+            preview: "rectangle",
+            topStyles: ["rectangle", "geometric", "browline"],
+            desc: "មុខរបស់អ្នកមានរាងមូលស្រទន់ ដោយទទឹងថ្ពាល់ និងប្រវែងមុខប្រហាក់ប្រហែលគ្នា។",
+            why: "<strong>មូលហេតុដែលស័ក្តិសម៖</strong> វ៉ែនតាជ្រុងដូចជា Rectangle, Geometric, Browline និង Cat Eye ជួយបង្កើតជ្រុង និងធ្វើឱ្យមុខមើលទៅវែងស្រឡូន។",
+            fitLocation: "<strong>ទីតាំងពាក់វ៉ែនតាលើមុខរបស់អ្នក៖</strong><ul><li><strong>ទីតាំងខ្ទង់ច្រមុះ៖</strong> ជ្រើសរើសខ្ទង់ខ្ពស់ (#168) ដើម្បីជួយឱ្យមុខមើលទៅវែង។</li><li><strong>ទីតាំងគែមខាងក្រោម៖</strong> គួរស្ថិតនៅខ្ពស់ជាងពាក់កណ្តាលថ្ពាល់ (#234–#454)។</li></ul>",
+            avoid: "<strong>គួរជៀសវាង៖</strong> ម៉ូដមូល (Round) ឬពងក្រពើតូចៗ (Oval)។"
+          },
+          Square: {
+            badge: "ទម្រង់មុខជ្រុង (Square)",
+            preview: "round",
+            topStyles: ["round", "pilot", "oval"],
+            desc: "អ្នកមានឆ្អឹងថ្គាមធំច្បាស់ និងថ្ងាសទូលាយស្មើគ្នាបែបទម្រង់ជ្រុង។",
+            why: "<strong>មូលហេតុដែលស័ក្តិសម៖</strong> វ៉ែនតារាងកោងមូលដូចជា Round, Oval និង Pilot ជួយបន្ទន់ជ្រុងឆ្អឹងថ្គាម (#172–#397) ឱ្យមើលទៅស្រទន់ជាងមុន។",
+            fitLocation: "<strong>ទីតាំងពាក់វ៉ែនតាលើមុខរបស់អ្នក៖</strong><ul><li><strong>ទីតាំងខ្ទង់ច្រមុះ៖</strong> ពាក់ឱ្យខ្ពស់បន្តិចលើខ្ទង់ច្រមុះ (#168)។</li><li><strong>ទីតាំងទទឹងវ៉ែនតា៖</strong> គួរស្មើនឹងទទឹងថ្ងាស (#103–#332)។</li></ul>",
+            avoid: "<strong>គួរជៀសវាង៖</strong> ម៉ូដ Rectangle ឬ Goggle ដែលមានជ្រុងក្រាស់។"
+          },
+          Heart: {
+            badge: "ទម្រង់មុខបេះដូង (Heart)",
+            preview: "pilot",
+            topStyles: ["pilot", "oval", "round"],
+            desc: "ផ្នែកថ្ងាស និងឆ្អឹងថ្ពាល់ទូលាយ ហើយរួមតូចមកផ្នែកចង្កា (#152)។",
+            why: "<strong>មូលហេតុដែលស័ក្តិសម៖</strong> ម៉ូដ Pilot, Oval និង Round ជួយបន្ថែមទម្ងន់ផ្នែកខាងក្រោមឱ្យមានតុល្យភាពជាមួយថ្ងាស (#103–#332)។",
+            fitLocation: "<strong>ទីតាំងពាក់វ៉ែនតាលើមុខរបស់អ្នក៖</strong><ul><li><strong>ទីតាំងសៀតផ្កា៖</strong> គែមខាងលើមិនគួរលៀនហួសសៀតផ្កាឡើយ។</li><li><strong>ទីតាំងគែមខាងក្រោម៖</strong> គែមកោងខាងក្រោមគួរធ្លាក់មកជិតពាក់កណ្តាលថ្ពាល់។</li></ul>",
+            avoid: "<strong>គួរជៀសវាង៖</strong> ម៉ូដ Browline ឬ Oversized ដែលធ្ងន់ផ្នែកខាងលើ។"
+          },
+          Diamond: {
+            badge: "ទម្រង់មុខពេជ្រ (Diamond)",
+            preview: "butterfly",
+            topStyles: ["butterfly", "cateye", "browline"],
+            desc: "ឆ្អឹងថ្ពាល់ (#234–#454) គឺជាផ្នែកទូលាយបំផុត ខណៈថ្ងាស និងចង្ការាងតូច។",
+            why: "<strong>មូលហេតុដែលស័ក្តិសម៖</strong> ម៉ូដ Butterfly, Cat Eye និង Browline ជួយពង្រីកផ្នែកខាងលើភ្នែកឱ្យសមាមាត្រជាមួយឆ្អឹងថ្ពាល់។",
+            fitLocation: "<strong>ទីតាំងពាក់វ៉ែនតាលើមុខរបស់អ្នក៖</strong><ul><li><strong>ទីតាំងក្រោមចិញ្ចើម៖</strong> ស៊ុមខាងលើគួរស្ថិតនៅក្រោមចិញ្ចើមបន្តិច (#103–#332)។</li><li><strong>ទីតាំងឆ្អឹងថ្ពាល់៖</strong> គែមខាងក្រោមគួររួមតូចកុំឱ្យប៉ះឆ្អឹងថ្ពាល់។</li></ul>",
+            avoid: "<strong>គួរជៀសវាង៖</strong> ម៉ូដ Rectangle តូចចង្អៀត។"
+          },
+          Oblong: {
+            badge: "ទម្រង់មុខវែង (Oblong)",
+            preview: "oversized",
+            topStyles: ["oversized", "goggle", "pilot"],
+            desc: "ប្រវែងមុខបញ្ឈរ (#10–#152) វែងជាងទទឹងថ្ពាល់យ៉ាងច្បាស់។",
+            why: "<strong>មូលហេតុដែលស័ក្តិសម៖</strong> ម៉ូដកញ្ចក់ធំខ្ពស់ដូចជា Oversized, Goggle និង Pilot ជួយកាត់បន្ថយប្រវែងមុខបញ្ឈរ និងបន្ថែមទទឹងមុខ។",
+            fitLocation: "<strong>ទីតាំងពាក់វ៉ែនតាលើមុខរបស់អ្នក៖</strong><ul><li><strong>ទីតាំងខ្ទង់ច្រមុះ៖</strong> ខ្ទង់វ៉ែនតាទាបឬក្រាស់បន្តិច (#168) ជួយឱ្យមុខមើលទៅខ្លីល្មម។</li><li><strong>ទីតាំងជម្រៅកញ្ចក់៖</strong> កញ្ចក់គួរធំចុះមកជិតពាក់កណ្តាលថ្ពាល់។</li></ul>",
+            avoid: "<strong>គួរជៀសវាង៖</strong> ម៉ូដ Rectangle ឬ Oval ដែលមានកញ្ចក់តូចស្តើង។"
+          }
+        }
+      }
+    };
+
+    // Frame Color Picker Event
+    colorDots.forEach(dot => {
+      dot.addEventListener("click", () => {
+        colorDots.forEach(d => d.classList.remove("active"));
+        dot.classList.add("active");
+        frameStrokeColor = dot.dataset.color;
+        frameFillColor = dot.dataset.fill;
+        if (activeSource === "photo" && photoLandmarks) {
+          renderPhotoOverlay();
+        }
+      });
+    });
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      const t = i18n[lang];
+
+      langButtons.forEach(b => b.classList.toggle("active", b.dataset.lang === lang));
+
+      document.getElementById("appTitle").textContent = t.appTitle;
+      document.getElementById("appSubtitle").textContent = t.appSubtitle;
+      document.getElementById("colorLabel").textContent = t.colorLabel;
+      startBtn.textContent = activeSource === "webcam" ? t.webcamActive : t.useWebcam;
+      uploadBtn.textContent = t.uploadSelfie;
+      scanBtn.textContent = t.scanWebcam;
+      document.getElementById("toggleZonesLabel").textContent = t.toggleZones;
+      document.getElementById("analysisHeader").textContent = t.analysisHeader;
+      document.getElementById("showcaseTitle").textContent = t.showcaseTitle;
+      document.getElementById("storePromptText").textContent = t.storePrompt;
+      document.getElementById("storeLinkText").textContent = t.storeLink;
+      document.getElementById("allModelsLabel").textContent = t.allModelsLabel;
+
+      document.querySelectorAll(".btn-label").forEach(span => {
+        const key = span.dataset.key;
+        if (t.styles[key]) span.textContent = t.styles[key];
+      });
+
+      if (lastDetectedShape && lastDetectedRatios) {
+        applyResults(lastDetectedShape, lastDetectedRatios, false);
+      } else {
+        faceShapeLabel.textContent = t.waitingScan;
+        shapeDescription.innerHTML = t.initialDesc;
+        statusText.textContent = faceLandmarker ? t.statusReady : t.statusLoading;
+      }
+    }
+
+    langButtons.forEach(btn => {
+      btn.addEventListener("click", () => setLanguage(btn.dataset.lang));
+    });
+
+    async function initModel() {
+      try {
+        const vision = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+        );
+        faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+            delegate: "GPU"
+          },
+          runningMode: "VIDEO",
+          numFaces: 1
+        });
+        startBtn.disabled = false;
+        uploadBtn.disabled = false;
+        statusText.textContent = i18n[currentLang].statusReady;
+      } catch (err) {
+        statusText.textContent = i18n[currentLang].statusError;
+        console.error(err);
+      }
+    }
+
+    initModel();
+
+    async function setLandmarkerMode(mode) {
+      if (currentRunningMode !== mode) {
+        await faceLandmarker.setOptions({ runningMode: mode });
+        currentRunningMode = mode;
+      }
+    }
+
+    function stopWebcam() {
+      if (webcamStream) {
+        webcamStream.getTracks().forEach(track => track.stop());
+        webcamStream = null;
+      }
+      video.srcObject = null;
+      video.style.display = "none";
+      startBtn.textContent = i18n[currentLang].useWebcam;
+      startBtn.disabled = false;
+    }
+
+    function startScanPhotoCycle() {
+      const keys = Object.keys(glassesPhotosSVG);
+      let idx = 0;
+      scanPreviewBox.style.display = "flex";
+      radarRing.style.display = "block";
+      const updateCard = () => {
+        const key = keys[idx % keys.length];
+        scanPreviewSvg.innerHTML = glassesPhotosSVG[key];
+        scanPreviewText.textContent = `${i18n[currentLang].scanningFitPrefix} ${i18n[currentLang].styles[key]}`;
+        selectedStyle = key;
+        idx++;
+      };
+      updateCard();
+      scanCycleInterval = setInterval(updateCard, 200);
+    }
+
+    function stopScanPhotoCycle() {
+      if (scanCycleInterval) {
+        clearInterval(scanCycleInterval);
+        scanCycleInterval = null;
+      }
+      scanPreviewBox.style.display = "none";
+      radarRing.style.display = "none";
+    }
+
+    startBtn.addEventListener("click", async () => {
+      if (!faceLandmarker) return;
+      try {
+        await setLandmarkerMode("VIDEO");
+        webcamStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 640, height: 480 }
+        });
+
+        uploadedPhoto.style.display = "none";
+        video.style.display = "block";
+        canvas.classList.add("mirrored");
+        canvas.style.objectFit = "cover";
+        photoLandmarks = null;
+
+        video.srcObject = webcamStream;
+        video.onloadeddata = () => {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          activeSource = "webcam";
+          scanBtn.disabled = false;
+          startBtn.textContent = i18n[currentLang].webcamActive;
+          startBtn.disabled = true;
+          statusText.textContent = i18n[currentLang].statusCenter;
+          predictLoop();
+        };
+      } catch (err) {
+        statusText.textContent = i18n[currentLang].statusCamDenied;
+      }
+    });
+
+    scanBtn.addEventListener("click", () => {
+      if (activeSource !== "webcam") return;
+      scanSamples = [];
+      isScanning = true;
+      scanLine.style.display = "block";
+      scanBtn.disabled = true;
+      statusText.textContent = i18n[currentLang].statusScanning;
+      startScanPhotoCycle();
+
+      setTimeout(() => {
+        isScanning = false;
+        scanLine.style.display = "none";
+        scanBtn.disabled = false;
+        stopScanPhotoCycle();
+        finalizeWebcamScan();
+      }, 2000);
+    });
+
+    uploadBtn.addEventListener("click", () => {
+      photoInput.value = "";
+      photoInput.click();
+    });
+
+    photoInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file || !faceLandmarker) return;
+
+      stopWebcam();
+      activeSource = "photo";
+      scanBtn.disabled = true;
+      statusText.textContent = i18n[currentLang].statusScanning;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        uploadedPhoto.onload = async () => {
+          uploadedPhoto.style.display = "block";
+          canvas.classList.remove("mirrored");
+          canvas.style.objectFit = "contain";
+
+          canvas.width = uploadedPhoto.naturalWidth;
+          canvas.height = uploadedPhoto.naturalHeight;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          await setLandmarkerMode("IMAGE");
+          const results = faceLandmarker.detect(uploadedPhoto);
+
+          if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+            photoLandmarks = results.faceLandmarks[0];
+            scanLine.style.display = "block";
+            startScanPhotoCycle();
+            setTimeout(() => {
+              scanLine.style.display = "none";
+              stopScanPhotoCycle();
+              const ratios = measureFace(photoLandmarks);
+              applyResults(classifyFaceShape(ratios), ratios, true);
+              renderPhotoOverlay();
+            }, 1200);
+          } else {
+            photoLandmarks = null;
+            lastDetectedShape = null;
+            faceShapeLabel.textContent = i18n[currentLang].noFaceBadge;
+            shapeDescription.textContent = i18n[currentLang].statusNoFace;
+            glassesShowcase.style.display = "none";
+            whyItWorks.style.display = "none";
+            locationExplanation.style.display = "none";
+            storeLocatorBar.style.display = "none";
+            avoidFrames.innerHTML = "";
+            statusText.textContent = i18n[currentLang].statusNoFace;
+          }
+        };
+        uploadedPhoto.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    showZonesToggle.addEventListener("change", () => {
+      if (activeSource === "photo" && photoLandmarks) {
+        renderPhotoOverlay();
+      }
+    });
+
+    function selectFrameStyle(styleKey) {
+      selectedStyle = styleKey;
+      frameButtons.forEach(b => {
+        b.classList.toggle("active", b.dataset.style === selectedStyle);
+      });
+      if (activeSource === "photo" && photoLandmarks) {
+        renderPhotoOverlay();
+      }
+    }
+
+    frameButtons.forEach(btn => {
+      btn.addEventListener("click", () => selectFrameStyle(btn.dataset.style));
+    });
+
+    function renderPhotoOverlay() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (!photoLandmarks) return;
+
+      if (showZonesToggle.checked) {
+        drawMeasurementLocations(photoLandmarks);
+      }
+      if (selectedStyle === "none") {
+        drawKeyLandmarks(photoLandmarks);
+      } else {
+        drawVirtualGlasses(photoLandmarks, selectedStyle);
+      }
+    }
+
+    function distance(p1, p2) {
+      return Math.hypot(
+        (p1.x - p2.x) * canvas.width,
+        (p1.y - p2.y) * canvas.height
+      );
+    }
+
+    function measureFace(landmarks) {
+      const faceHeight = distance(landmarks[10], landmarks[152]);
+      const cheekWidth = distance(landmarks[234], landmarks[454]);
+      const foreheadWidth = distance(landmarks[103], landmarks[332]);
+      const jawWidth = distance(landmarks[172], landmarks[397]);
+
+      return {
+        lengthToWidth: faceHeight / cheekWidth,
+        foreheadToJaw: foreheadWidth / jawWidth,
+        cheekToJaw: cheekWidth / jawWidth,
+        cheekToForehead: cheekWidth / foreheadWidth
+      };
+    }
+
+    function classifyFaceShape(avg) {
+      if (avg.lengthToWidth > 1.52) return "Oblong";
+      if (avg.cheekToForehead > 1.13 && avg.cheekToJaw > 1.22) return "Diamond";
+      if (avg.foreheadToJaw > 1.18 && avg.cheekToJaw > 1.20) return "Heart";
+      if (avg.lengthToWidth <= 1.32 && avg.cheekToJaw < 1.20) return "Round";
+      if (avg.lengthToWidth <= 1.38 && avg.foreheadToJaw >= 0.92 && avg.foreheadToJaw <= 1.12) return "Square";
+      return "Oval";
+    }
+
+    function triggerRevealAnimation(el) {
+      el.classList.remove("reveal-anim");
+      void el.offsetWidth;
+      el.classList.add("reveal-anim");
+    }
+
+    function applyResults(detectedShape, ratios, resetStyle = true) {
+      lastDetectedShape = detectedShape;
+      lastDetectedRatios = ratios;
+
+      const t = i18n[currentLang];
+      const info = t.shapes[detectedShape];
+
+      faceShapeLabel.textContent = info.badge;
+      shapeDescription.textContent = info.desc;
+
+      glassesPhotoGrid.innerHTML = info.topStyles.map(styleKey => `
+        <div class="glasses-photo-card" data-pick="${styleKey}">
+          ${glassesPhotosSVG[styleKey]}
+          <span>${t.styles[styleKey]}</span>
+        </div>
+      `).join("");
+      glassesShowcase.style.display = "block";
+      triggerRevealAnimation(glassesShowcase);
+
+      glassesPhotoGrid.querySelectorAll(".glasses-photo-card").forEach(card => {
+        card.addEventListener("click", () => selectFrameStyle(card.dataset.pick));
+      });
+
+      whyItWorks.innerHTML = info.why;
+      whyItWorks.style.display = "block";
+      triggerRevealAnimation(whyItWorks);
+
+      const pct = (val) => Math.min(100, Math.max(25, Math.round((val / 1.75) * 100)));
+      locationExplanation.innerHTML = `
+        ${info.fitLocation}
+        <div class="ratio-bars">
+          <div class="ratio-item">
+            <div class="ratio-header"><span>${t.ratios.r1}</span><strong>${ratios.lengthToWidth.toFixed(2)}</strong></div>
+            <div class="ratio-track"><div class="ratio-fill" data-w="${pct(ratios.lengthToWidth)}%"></div></div>
+          </div>
+          <div class="ratio-item">
+            <div class="ratio-header"><span>${t.ratios.r2}</span><strong>${ratios.foreheadToJaw.toFixed(2)}</strong></div>
+            <div class="ratio-track"><div class="ratio-fill" data-w="${pct(ratios.foreheadToJaw)}%"></div></div>
+          </div>
+          <div class="ratio-item">
+            <div class="ratio-header"><span>${t.ratios.r3}</span><strong>${ratios.cheekToJaw.toFixed(2)}</strong></div>
+            <div class="ratio-track"><div class="ratio-fill" data-w="${pct(ratios.cheekToJaw)}%"></div></div>
+          </div>
+          <div class="ratio-item">
+            <div class="ratio-header"><span>${t.ratios.r4}</span><strong>${ratios.cheekToForehead.toFixed(2)}</strong></div>
+            <div class="ratio-track"><div class="ratio-fill" data-w="${pct(ratios.cheekToForehead)}%"></div></div>
+          </div>
+        </div>
+      `;
+      locationExplanation.style.display = "block";
+      triggerRevealAnimation(locationExplanation);
+
+      requestAnimationFrame(() => {
+        locationExplanation.querySelectorAll(".ratio-fill").forEach(bar => {
+          bar.style.width = bar.dataset.w;
+        });
+      });
+
+      storeLocatorBar.style.display = "flex";
+      avoidFrames.innerHTML = info.avoid;
+      statusText.textContent = t.statusComplete;
+
+      if (resetStyle) {
+        selectFrameStyle(info.preview);
+      }
+    }
+
+    function finalizeWebcamScan() {
+      if (scanSamples.length === 0) {
+        statusText.textContent = i18n[currentLang].statusNoFace;
+        return;
+      }
+
+      const avg = scanSamples.reduce(
+        (acc, cur) => ({
+          lengthToWidth: acc.lengthToWidth + cur.lengthToWidth / scanSamples.length,
+          foreheadToJaw: acc.foreheadToJaw + cur.foreheadToJaw / scanSamples.length,
+          cheekToJaw: acc.cheekToJaw + cur.cheekToJaw / scanSamples.length,
+          cheekToForehead: acc.cheekToForehead + cur.cheekToForehead / scanSamples.length
+        }),
+        { lengthToWidth: 0, foreheadToJaw: 0, cheekToJaw: 0, cheekToForehead: 0 }
+      );
+
+      applyResults(classifyFaceShape(avg), avg, true);
+    }
+
+    function drawMeasurementLocations(landmarks) {
+      const lineW = Math.max(1.5, canvas.width * 0.0025);
+      ctx.save();
+      ctx.lineWidth = lineW;
+      ctx.setLineDash([6, 4]);
+
+      const zones = [
+        { p1: 103, p2: 332, color: "#a78bfa" },
+        { p1: 234, p2: 454, color: "#34d399" },
+        { p1: 172, p2: 397, color: "#fbbf24" }
+      ];
+
+      zones.forEach(z => {
+        const a = landmarks[z.p1];
+        const b = landmarks[z.p2];
+        const x1 = a.x * canvas.width;
+        const y1 = a.y * canvas.height;
+        const x2 = b.x * canvas.width;
+        const y2 = b.y * canvas.height;
+
+        ctx.strokeStyle = z.color;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        ctx.fillStyle = z.color;
+        ctx.beginPath();
+        ctx.arc(x1, y1, lineW * 2.2, 0, Math.PI * 2);
+        ctx.arc(x2, y2, lineW * 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      const top = landmarks[10];
+      const chin = landmarks[152];
+      ctx.strokeStyle = "rgba(248, 250, 252, 0.45)";
+      ctx.beginPath();
+      ctx.moveTo(top.x * canvas.width, top.y * canvas.height);
+      ctx.lineTo(chin.x * canvas.width, chin.y * canvas.height);
+      ctx.stroke();
+
+      const bridge = landmarks[168];
+      ctx.fillStyle = "#f43f5e";
+      ctx.beginPath();
+      ctx.arc(bridge.x * canvas.width, bridge.y * canvas.height, lineW * 2.6, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function drawKeyLandmarks(landmarks) {
+      ctx.fillStyle = "#38bdf8";
+      const dotRadius = Math.max(4, canvas.width * 0.006);
+      const keyPoints = [10, 152, 234, 454, 103, 332, 172, 397, 33, 263, 168];
+      keyPoints.forEach(idx => {
+        const pt = landmarks[idx];
+        ctx.beginPath();
+        ctx.arc(pt.x * canvas.width, pt.y * canvas.height, dotRadius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    // Draw All 10 Reference Silhouettes onto the Live Face Canvas
+    function drawVirtualGlasses(landmarks, style) {
+      if (style === "none") return;
+
+      const leftEye = landmarks[33];
+      const rightEye = landmarks[263];
+      const bridge = landmarks[168];
+
+      const dx = (rightEye.x - leftEye.x) * canvas.width;
+      const dy = (rightEye.y - leftEye.y) * canvas.height;
+      const angle = Math.atan2(dy, dx);
+      const glassesWidth = Math.hypot(dx, dy) * 1.58;
+      const lensW = glassesWidth * 0.42;
+      const lensH = lensW * 0.66;
+      const gap = glassesWidth * 0.10;
+      const baseStroke = Math.max(3.5, canvas.width * 0.006);
+
+      ctx.save();
+      ctx.translate(bridge.x * canvas.width, bridge.y * canvas.height);
+      ctx.rotate(angle);
+
+      ctx.strokeStyle = frameStrokeColor;
+      ctx.fillStyle = frameFillColor;
+      ctx.lineWidth = baseStroke;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+
+      if (style === "browline") {
+        // Thin lower wire rim
+        ctx.lineWidth = baseStroke * 0.52;
+        ctx.beginPath();
+        ctx.roundRect(-gap / 2 - lensW, -lensH * 0.30, lensW, lensH * 1.02, [4, 4, lensW * 0.38, lensW * 0.38]);
+        ctx.roundRect(gap / 2, -lensH * 0.30, lensW, lensH * 1.02, [4, 4, lensW * 0.38, lensW * 0.38]);
+        ctx.fill();
+        ctx.stroke();
+
+        // Thin metal bridge
+        ctx.lineWidth = baseStroke * 0.85;
+        ctx.beginPath();
+        ctx.moveTo(-gap / 2, -lensH * 0.16);
+        ctx.lineTo(gap / 2, -lensH * 0.16);
+        ctx.stroke();
+
+        // Thick sculpted upper brow cap + endpieces
+        ctx.lineWidth = baseStroke * 2.15;
+        ctx.beginPath();
+        ctx.moveTo(-gap / 2 - lensW * 1.08, -lensH * 0.24);
+        ctx.quadraticCurveTo(-gap / 2 - lensW * 0.5, -lensH * 0.44, -gap / 2, -lensH * 0.22);
+        ctx.moveTo(gap / 2, -lensH * 0.22);
+        ctx.quadraticCurveTo(gap / 2 + lensW * 0.5, -lensH * 0.44, gap / 2 + lensW * 1.08, -lensH * 0.24);
+        ctx.stroke();
+
+      } else if (style === "butterfly") {
+        // Rounded butterfly lenses with flared outer wing
+        ctx.lineWidth = baseStroke * 1.15;
+        [-1, 1].forEach(dir => {
+          const innerX = dir * (gap / 2);
+          const outerX = dir * (gap / 2 + lensW * 1.08);
+          ctx.beginPath();
+          ctx.moveTo(innerX, -lensH * 0.12);
+          ctx.quadraticCurveTo(dir * (gap / 2 + lensW * 0.45), -lensH * 0.44, outerX, -lensH * 0.38);
+          ctx.quadraticCurveTo(dir * (gap / 2 + lensW * 1.04), lensH * 0.68, dir * (gap / 2 + lensW * 0.48), lensH * 0.68);
+          ctx.quadraticCurveTo(dir * (gap / 2 + lensW * 0.04), lensH * 0.60, innerX, -lensH * 0.12);
+          ctx.fill();
+          ctx.stroke();
+
+          // Upper wing double-line arch
+          ctx.beginPath();
+          ctx.moveTo(dir * (gap / 2 + lensW * 0.12), -lensH * 0.25);
+          ctx.quadraticCurveTo(dir * (gap / 2 + lensW * 0.65), -lensH * 0.56, dir * (gap / 2 + lensW * 1.15), -lensH * 0.54);
+          ctx.lineTo(outerX, -lensH * 0.34);
+          ctx.stroke();
+        });
+        ctx.lineWidth = baseStroke * 0.75;
+        ctx.beginPath();
+        ctx.moveTo(-gap / 2, -lensH * 0.08);
+        ctx.quadraticCurveTo(0, -lensH * 0.18, gap / 2, -lensH * 0.08);
+        ctx.stroke();
+
+      } else if (style === "cateye") {
+        // Sleek narrow almond upswept cat-eye
+        ctx.lineWidth = baseStroke * 1.45;
+        [-1, 1].forEach(dir => {
+          const innerX = dir * (gap / 2);
+          const outerX = dir * (gap / 2 + lensW * 1.12);
+          ctx.beginPath();
+          ctx.moveTo(innerX, -lensH * 0.10);
+          ctx.quadraticCurveTo(dir * (gap / 2 + lensW * 0.55), -lensH * 0.36, outerX, -lensH * 0.34);
+          ctx.quadraticCurveTo(dir * (gap / 2 + lensW * 0.96), lensH * 0.56, dir * (gap / 2 + lensW * 0.46), lensH * 0.54);
+          ctx.quadraticCurveTo(dir * (gap / 2 + lensW * 0.06), lensH * 0.48, innerX, -lensH * 0.10);
+          ctx.fill();
+          ctx.stroke();
+        });
+        ctx.beginPath();
+        ctx.moveTo(-gap / 2, -lensH * 0.08);
+        ctx.lineTo(gap / 2, -lensH * 0.08);
+        ctx.stroke();
+
+      } else if (style === "geometric") {
+        // Faceted angular upper brow with rounded lower bowl
+        ctx.lineWidth = baseStroke * 1.5;
+        [-1, 1].forEach(dir => {
+          const x0 = dir * (gap / 2);
+          const xPeak = dir * (gap / 2 + lensW * 0.72);
+          const xOuter = dir * (gap / 2 + lensW * 1.06);
+          ctx.beginPath();
+          ctx.moveTo(x0, -lensH * 0.18);
+          ctx.lineTo(xPeak, -lensH * 0.44);
+          ctx.lineTo(xOuter, -lensH * 0.24);
+          ctx.quadraticCurveTo(dir * (gap / 2 + lensW * 0.98), lensH * 0.72, dir * (gap / 2 + lensW * 0.48), lensH * 0.70);
+          ctx.quadraticCurveTo(dir * (gap / 2 + lensW * 0.04), lensH * 0.65, x0, -lensH * 0.18);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        });
+        ctx.beginPath();
+        ctx.moveTo(-gap / 2, -lensH * 0.16);
+        ctx.lineTo(gap / 2, -lensH * 0.16);
+        ctx.stroke();
+
+      } else if (style === "rectangle") {
+        // Thin wire wide rectangular lenses with double bridge
+        ctx.lineWidth = baseStroke * 0.58;
+        const rectH = lensH * 0.76;
+        ctx.beginPath();
+        ctx.roundRect(-gap / 2 - lensW * 1.05, -rectH * 0.38, lensW * 1.05, rectH, 5);
+        ctx.roundRect(gap / 2, -rectH * 0.38, lensW * 1.05, rectH, 5);
+        ctx.fill();
+        ctx.stroke();
+
+        // Double bridge bar
+        ctx.beginPath();
+        ctx.moveTo(-gap / 2, -rectH * 0.30);
+        ctx.lineTo(gap / 2, -rectH * 0.30);
+        ctx.moveTo(-gap / 2, -rectH * 0.12);
+        ctx.lineTo(gap / 2, -rectH * 0.12);
+        ctx.stroke();
+
+        // Outer hinge lugs
+        ctx.fillStyle = frameStrokeColor;
+        ctx.fillRect(-gap / 2 - lensW * 1.12, -rectH * 0.24, lensW * 0.07, rectH * 0.24);
+        ctx.fillRect(gap / 2 + lensW * 1.05, -rectH * 0.24, lensW * 0.07, rectH * 0.24);
+
+      } else if (style === "goggle") {
+        // Extra thick chunky rounded-square acetate frame
+        ctx.lineWidth = baseStroke * 2.15;
+        const r = lensW * 0.24;
+        ctx.beginPath();
+        ctx.roundRect(-gap / 2 - lensW, -lensH * 0.38, lensW, lensH * 1.04, r);
+        ctx.roundRect(gap / 2, -lensH * 0.38, lensW, lensH * 1.04, r);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(-gap / 2, -lensH * 0.08);
+        ctx.quadraticCurveTo(0, -lensH * 0.20, gap / 2, -lensH * 0.08);
+        ctx.stroke();
+
+      } else if (style === "oval") {
+        // Classic oval lenses with high keyhole bridge & side endpieces
+        ctx.lineWidth = baseStroke * 1.25;
+        const rx = lensW * 0.48;
+        const ry = lensH * 0.52;
+        ctx.beginPath();
+        ctx.ellipse(-gap / 2 - rx, lensH * 0.16, rx, ry, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.ellipse(gap / 2 + rx, lensH * 0.16, rx, ry, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Keyhole arch bridge
+        ctx.lineWidth = baseStroke * 1.4;
+        ctx.beginPath();
+        ctx.moveTo(-gap / 2 - rx * 0.15, -lensH * 0.10);
+        ctx.quadraticCurveTo(0, -lensH * 0.34, gap / 2 + rx * 0.15, -lensH * 0.10);
+        ctx.stroke();
+
+        // Side endpiece lugs
+        ctx.beginPath();
+        ctx.moveTo(-gap / 2 - rx * 2.0, -lensH * 0.06);
+        ctx.lineTo(-gap / 2 - rx * 2.22, -lensH * 0.06);
+        ctx.moveTo(gap / 2 + rx * 2.0, -lensH * 0.06);
+        ctx.lineTo(gap / 2 + rx * 2.22, -lensH * 0.06);
+        ctx.stroke();
+
+      } else if (style === "oversized") {
+        // Large deep square frame with straight flat brow line
+        ctx.lineWidth = baseStroke * 1.45;
+        const deepH = lensH * 1.18;
+        ctx.beginPath();
+        ctx.roundRect(-gap / 2 - lensW * 1.06, -deepH * 0.36, lensW * 1.06, deepH, [4, 4, lensW * 0.22, lensW * 0.22]);
+        ctx.roundRect(gap / 2, -deepH * 0.36, lensW * 1.06, deepH, [4, 4, lensW * 0.22, lensW * 0.22]);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.lineWidth = baseStroke * 1.7;
+        ctx.beginPath();
+        ctx.moveTo(-gap / 2, -deepH * 0.26);
+        ctx.lineTo(gap / 2, -deepH * 0.26);
+        ctx.stroke();
+
+      } else if (style === "pilot") {
+        // Classic teardrop aviator with continuous flat top bar & inner bridge
+        ctx.lineWidth = baseStroke * 1.05;
+        ctx.beginPath();
+        ctx.roundRect(-gap / 2 - lensW, -lensH * 0.32, lensW, lensH * 1.16, [lensW * 0.10, lensW * 0.10, lensW * 0.38, lensW * 0.22]);
+        ctx.roundRect(gap / 2, -lensH * 0.32, lensW, lensH * 1.16, [lensW * 0.10, lensW * 0.10, lensW * 0.22, lensW * 0.38]);
+        ctx.fill();
+        ctx.stroke();
+
+        // Top aviator brow bar + curved lower bridge
+        ctx.lineWidth = baseStroke * 0.85;
+        ctx.beginPath();
+        ctx.moveTo(-gap / 2 - lensW * 0.25, -lensH * 0.32);
+        ctx.lineTo(gap / 2 + lensW * 0.25, -lensH * 0.32);
+        ctx.moveTo(-gap / 2, -lensH * 0.10);
+        ctx.quadraticCurveTo(0, -lensH * 0.20, gap / 2, -lensH * 0.10);
+        ctx.stroke();
+
+      } else if (style === "round") {
+        // Thin wire circular lenses with thin curved bridge & side pins
+        ctx.lineWidth = baseStroke * 0.55;
+        const radius = lensW * 0.46;
+        ctx.beginPath();
+        ctx.arc(-gap / 2 - radius, radius * 0.24, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(gap / 2 + radius, radius * 0.24, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(-gap / 2, radius * 0.18);
+        ctx.quadraticCurveTo(0, radius * 0.02, gap / 2, radius * 0.18);
+        ctx.moveTo(-gap / 2 - radius * 2, radius * 0.22);
+        ctx.lineTo(-gap / 2 - radius * 2.25, radius * 0.22);
+        ctx.moveTo(gap / 2 + radius * 2, radius * 0.22);
+        ctx.lineTo(gap / 2 + radius * 2.25, radius * 0.22);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    function predictLoop() {
+      if (activeSource !== "webcam") return;
+
+      const results = faceLandmarker.detectForVideo(video, performance.now());
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+        const landmarks = results.faceLandmarks[0];
+
+        if (isScanning) {
+          scanSamples.push(measureFace(landmarks));
+        }
+
+        if (showZonesToggle.checked) {
+          drawMeasurementLocations(landmarks);
+        }
+
+        if (selectedStyle === "none") {
+          drawKeyLandmarks(landmarks);
+        } else {
+          drawVirtualGlasses(landmarks, selectedStyle);
+        }
+      }
+
+      requestAnimationFrame(predictLoop);
+    }
+  </script>
+</body>
+</html>
